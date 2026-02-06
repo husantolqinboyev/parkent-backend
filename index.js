@@ -299,15 +299,21 @@ app.post('/api/admin', async (req, res) => {
     }
     
     // Admin rolini tekshirish
-    const { data: roleData } = await supabase
+    console.log(`Checking admin role for user: ${user.id}`);
+    const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .single();
     
-    if (roleData?.role !== 'admin') {
+    console.log('Role query result:', { roleData, roleError });
+    
+    if (roleError || roleData?.role !== 'admin') {
+      console.log(`Access denied. User role: ${roleData?.role}, Error: ${roleError?.message}`);
       return res.status(403).json({ error: 'Admin access required' });
     }
+    
+    console.log('Admin access granted');
     
     let result;
     
