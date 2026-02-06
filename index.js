@@ -131,6 +131,7 @@ app.post('/api/telegram/auth', async (req, res) => {
     }
 
     console.log(`Verifying auth code: ${code}`);
+    console.log(`Current time: ${new Date().toISOString()}`);
 
     // Find valid auth code
     const { data: authCode, error: findError } = await supabase
@@ -143,12 +144,15 @@ app.post('/api/telegram/auth', async (req, res) => {
       .limit(1)
       .maybeSingle();
 
+    console.log('Database query result:', { authCode, findError });
+
     if (findError) {
       console.error('Error finding auth code:', findError);
       throw findError;
     }
 
     if (!authCode) {
+      console.log(`Code ${code} not found or expired`);
       return res.status(400).json({ error: 'Kod noto\'g\'ri yoki muddati o\'tgan' });
     }
 
