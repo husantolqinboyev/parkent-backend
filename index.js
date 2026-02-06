@@ -314,6 +314,7 @@ app.post('/api/admin', async (req, res) => {
     }
     
     console.log('Admin access granted');
+    console.log(`Admin API action: ${action}`, params);
     
     let result;
     
@@ -334,6 +335,7 @@ app.post('/api/admin', async (req, res) => {
           premium_users: premiumUsersCount || 0,
           blocked_users: blockedUsersCount || 0,
         };
+        console.log('Stats result:', result);
         break;
         
       case 'get_all_listings':
@@ -345,6 +347,7 @@ app.post('/api/admin', async (req, res) => {
           `)
           .order('created_at', { ascending: false });
         result = listings || [];
+        console.log(`All listings result: ${result.length} listings found`);
         break;
         
       case 'get_all_users':
