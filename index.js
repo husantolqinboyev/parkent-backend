@@ -341,25 +341,53 @@ app.post('/api/admin', async (req, res) => {
       case 'get_all_listings':
         const { data: listings } = await supabase
           .from('listings')
-          .select(`
-            *,
-            profiles!inner(display_name, telegram_id)
-          `)
+          .select('*')
           .order('created_at', { ascending: false });
-        result = listings || [];
+        
+        // Har bir listing uchun profile ma'lumotlarini alohida olish
+        const listingsWithProfiles = await Promise.all(
+          (listings || []).map(async (listing) => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('display_name, telegram_id')
+              .eq('user_id', listing.user_id)
+              .single();
+            
+            return {
+              ...listing,
+              profiles: profile
+            };
+          })
+        );
+        
+        result = listingsWithProfiles;
         console.log(`All listings result: ${result.length} listings found`);
         break;
         
       case 'get_all_users':
         const { data: users } = await supabase
           .from('profiles')
-          .select(`
-            *,
-            user_roles!inner(role),
-            auth.users!inner(email, created_at)
-          `)
+          .select('*')
           .order('created_at', { ascending: false });
-        result = users || [];
+        
+        // Har bir user uchun qo'shimcha ma'lumotlarni olish
+        const usersWithDetails = await Promise.all(
+          (users || []).map(async (user) => {
+            const { data: role } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', user.user_id)
+              .single();
+            
+            return {
+              ...user,
+              user_roles: role ? [role] : null
+            };
+          })
+        );
+        
+        result = usersWithDetails;
+        console.log(`All users result: ${result.length} users found`);
         break;
         
       case 'get_categories':
