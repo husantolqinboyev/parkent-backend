@@ -370,6 +370,8 @@ app.post('/api/admin', async (req, res) => {
           .select('*')
           .order('created_at', { ascending: false });
         
+        console.log(`Found ${users?.length || 0} profiles in database`);
+        
         // Har bir user uchun qo'shimcha ma'lumotlarni olish
         const usersWithDetails = await Promise.all(
           (users || []).map(async (user) => {
