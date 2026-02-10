@@ -221,12 +221,6 @@ app.post('/api/telegram/auth', async (req, res) => {
         .insert({
           user_id: userId,
           telegram_id: telegramId,
-        }, {
-          // Use service role to bypass RLS
-          headers: {
-            'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-          }
         });
 
       if (profileError) {
@@ -242,12 +236,6 @@ app.post('/api/telegram/auth', async (req, res) => {
         .insert({
           user_id: userId,
           role: 'user',
-        }, {
-          // Use service role to bypass RLS
-          headers: {
-            'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
-          }
         });
 
       if (roleError) {
@@ -370,7 +358,7 @@ app.post('/api/admin', async (req, res) => {
               .from('profiles')
               .select('display_name, telegram_id')
               .eq('user_id', listing.user_id)
-              .single();
+              .maybeSingle();
             
             console.log(`Profile for listing ${listing.id}:`, { profile, profileError });
             
@@ -483,6 +471,53 @@ app.post('/api/admin', async (req, res) => {
           .select('*')
           .order('created_at', { ascending: false });
         result = banners || [];
+        break;
+        
+      case 'create_banner':
+        const { data: newBanner, error: createBannerError } = await supabase
+          .from('banners')
+          .insert({
+            title: params.title,
+            image_url: params.image_url,
+            link_url: params.link_url || null,
+            position: params.position || 'header',
+            is_active: true,
+            sort_order: 0,
+            expires_at: params.expires_at || null
+          })
+          .select()
+          .single();
+        
+        if (createBannerError) throw createBannerError;
+        result = newBanner;
+        break;
+        
+      case 'update_banner':
+        const { data: updatedBanner, error: updateBannerError } = await supabase
+          .from('banners')
+          .update({
+            title: params.title,
+            image_url: params.image_url,
+            link_url: params.link_url || null,
+            position: params.position || 'header',
+            is_active: params.is_active,
+            expires_at: params.expires_at || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', params.banner_id)
+          .select()
+          .single();
+        
+        if (updateBannerError) throw updateBannerError;
+        result = updatedBanner;
+        break;
+        
+      case 'delete_banner':
+        await supabase
+          .from('banners')
+          .delete()
+          .eq('id', params.banner_id);
+        result = { success: true };
         break;
         
       case 'approve_listing':
