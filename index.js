@@ -215,27 +215,45 @@ app.post('/api/telegram/auth', async (req, res) => {
       userId = newUser.user.id;
 
       // Create profile
+      console.log(`Creating profile for user ${userId} with telegram_id ${telegramId}`);
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
           user_id: userId,
           telegram_id: telegramId,
+        }, {
+          // Use service role to bypass RLS
+          headers: {
+            'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
         });
 
       if (profileError) {
         console.error('Error creating profile:', profileError);
+      } else {
+        console.log(`Profile created successfully for user ${userId}`);
       }
 
       // Create user role
+      console.log(`Creating user role for user ${userId}`);
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
           user_id: userId,
           role: 'user',
+        }, {
+          // Use service role to bypass RLS
+          headers: {
+            'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
+          }
         });
 
       if (roleError) {
         console.error('Error creating user role:', roleError);
+      } else {
+        console.log(`User role created successfully for user ${userId}`);
       }
 
       // Generate session for new user
@@ -347,11 +365,14 @@ app.post('/api/admin', async (req, res) => {
         // Har bir listing uchun profile ma'lumotlarini alohida olish
         const listingsWithProfiles = await Promise.all(
           (listings || []).map(async (listing) => {
-            const { data: profile } = await supabase
+            console.log(`Processing listing ${listing.id}, user_id: ${listing.user_id}`);
+            const { data: profile, error: profileError } = await supabase
               .from('profiles')
               .select('display_name, telegram_id')
               .eq('user_id', listing.user_id)
               .single();
+            
+            console.log(`Profile for listing ${listing.id}:`, { profile, profileError });
             
             return {
               ...listing,
@@ -406,6 +427,54 @@ app.post('/api/admin', async (req, res) => {
           .select('*')
           .order('created_at', { ascending: false });
         result = partners || [];
+        break;
+        
+      case 'create_partner':
+        const { data: newPartner, error: createPartnerError } = await supabase
+          .from('partners')
+          .insert({
+            name: params.name,
+            logo_url: params.logo_url || null,
+            website_url: params.website_url || null,
+            telegram_url: params.telegram_url || null,
+            instagram_url: params.instagram_url || null,
+            facebook_url: params.facebook_url || null,
+            is_active: true,
+            sort_order: 0
+          })
+          .select()
+          .single();
+        
+        if (createPartnerError) throw createPartnerError;
+        result = newPartner;
+        break;
+        
+      case 'update_partner':
+        const { data: updatedPartner, error: updatePartnerError } = await supabase
+          .from('partners')
+          .update({
+            name: params.name,
+            logo_url: params.logo_url || null,
+            website_url: params.website_url || null,
+            telegram_url: params.telegram_url || null,
+            instagram_url: params.instagram_url || null,
+            facebook_url: params.facebook_url || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', params.partner_id)
+          .select()
+          .single();
+        
+        if (updatePartnerError) throw updatePartnerError;
+        result = updatedPartner;
+        break;
+        
+      case 'delete_partner':
+        await supabase
+          .from('partners')
+          .delete()
+          .eq('id', params.partner_id);
+        result = { success: true };
         break;
         
       case 'get_banners':
