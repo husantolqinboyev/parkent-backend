@@ -418,6 +418,7 @@ app.post('/api/admin', async (req, res) => {
         break;
         
       case 'create_partner':
+        console.log('Creating partner with params:', params);
         const { data: newPartner, error: createPartnerError } = await supabase
           .from('partners')
           .insert({
@@ -433,7 +434,12 @@ app.post('/api/admin', async (req, res) => {
           .select()
           .single();
         
-        if (createPartnerError) throw createPartnerError;
+        console.log('Partner creation result:', { newPartner, createPartnerError });
+        
+        if (createPartnerError) {
+          console.error('Partner creation error details:', createPartnerError);
+          throw createPartnerError;
+        }
         result = newPartner;
         break;
         
